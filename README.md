@@ -17,8 +17,8 @@
 
 | | |
 |---|---|
-| 🔢 **Category Counters** | Create custom purchase categories, each with its own color and step value |
-| 💰 **Budget Tracking** | Set a total card value (X) and watch your remaining balance update in real time |
+| 🎿 **Ticket Counters** | Create custom ticket categories, each with its own color and price |
+| 💰 **Budget Tracking** | Set the Gravity Card price and watch your remaining balance update in real time |
 | 🔒 **PIN Protection** | 4-digit PIN screen with lockout after 5 failed attempts (5-minute cooldown) |
 | 📴 **Offline Support** | Service Worker caches the app — works without internet after first load |
 | 📱 **Installable PWA** | Add to home screen on iOS and Android for a native app experience |
@@ -34,9 +34,9 @@ The app has three main areas:
 ┌─────────────────────────────┐
 │   🔐 PIN Screen             │  4-digit entry · lockout after 5 wrong tries
 ├─────────────────────────────┤
-│   💳 Budget Panel           │  Set card value · live remaining balance
+│   💳 Budget Panel           │  Set Gravity Card price · live remaining balance in €
 ├─────────────────────────────┤
-│   🗂️ Category Cards         │  Per-category counter · increment / decrement
+│   🎿 Ticket Cards           │  Per-ticket counter · increment / decrement
 └─────────────────────────────┘
 ```
 
@@ -64,27 +64,27 @@ Right-click `src/index.html` → **Open with Live Server**
 
 ---
 
-## 🗂️ Categories
+## 🎿 Tickets
 
-Each category has:
+Each ticket has:
 
-- **Name** — e.g. *Wexltrails halbtags*, *Wexltrails ganztags*, *etc..
+- **Name** — e.g. *Wexltrails halbtags*, *Wexltrails ganztags*
 - **Color** — pick from 8 accent colors
-- **Step value** — every `+` click adds this amount to the sum (default: `1`)
+- **Ticket price** — every `+` click deducts this amount (in €) from the Gravity Card balance
 
-The counter displays the **number of clicks** prominently, with the **accumulated sum** shown below.
+The counter displays the **number of rides** prominently, with the **accumulated sum in €** shown below.
 
 ---
 
 ## 💳 Budget
 
-Set the total value of your Gravity Card as **X**. Every `+` click on any category deducts from the remaining balance. Every `−` click refunds it.
+Enter the price of your Gravity Card. Every `+` click on any ticket deducts its price from the remaining balance. Every `−` click refunds it. All amounts are displayed in **€** (Austrian locale).
 
 | Status | Color |
 |--------|-------|
-| Positive balance | 🟢 Green |
-| Negative balance | 🔴 Red |
-| No budget set | ⚫ Gray |
+| Balance still positive (card not yet paid off) | 🔴 Red |
+| Balance at zero or below (card has paid off) | 🟢 Green |
+| No price set | ⚫ Gray |
 
 ---
 
