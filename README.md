@@ -68,7 +68,7 @@ Right-click `src/index.html` → **Open with Live Server**
 
 Each category has:
 
-- **Name** — e.g. *Kaffee*, *Kilometer*, *Mittagessen*
+- **Name** — e.g. *Wexltrails halbtags*, *Wexltrails ganztags*, *etc..
 - **Color** — pick from 8 accent colors
 - **Step value** — every `+` click adds this amount to the sum (default: `1`)
 
