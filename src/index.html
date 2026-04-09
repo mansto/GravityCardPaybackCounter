@@ -360,21 +360,64 @@
   let budgetStart = null;   // the X value user entered
   let budgetSpent = 0;      // total debited so far (sum of all + clicks * step, minus - clicks)
 
-  // Load from localStorage
-  function load() {
+  // ── IndexedDB Storage ──────────────────────────────────────────────────
+  // IndexedDB has stronger persistence guarantees than localStorage on
+  // Android Firefox — localStorage can be evicted on browser restart.
+  const DB_NAME = 'gravity-counter';
+  const DB_STORE = 'data';
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbGet(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function dbSet(key, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(value, key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // Load from IndexedDB (migrates localStorage data on first run)
+  async function load() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      categories = stored ? JSON.parse(stored) : [
+      const lsCats = localStorage.getItem(STORAGE_KEY);
+      if (lsCats) {
+        try { await dbSet(STORAGE_KEY, JSON.parse(lsCats)); } catch {}
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      const stored = await dbGet(STORAGE_KEY);
+      categories = stored || [
         { id: 1, name: 'Kaffee', color: '#c0703a', step: 1, count: 0, sum: 0 },
         { id: 2, name: 'Schritte', color: '#3a7bc0', step: 100, count: 0, sum: 0 },
       ];
     } catch { categories = []; }
     try {
-      const b = localStorage.getItem(BUDGET_KEY);
+      const lsBudget = localStorage.getItem(BUDGET_KEY);
+      if (lsBudget) {
+        try { await dbSet(BUDGET_KEY, JSON.parse(lsBudget)); } catch {}
+        localStorage.removeItem(BUDGET_KEY);
+      }
+      const b = await dbGet(BUDGET_KEY);
       if (b) {
-        const parsed = JSON.parse(b);
-        budgetStart = parsed.start;
-        budgetSpent = parsed.spent || 0;
+        budgetStart = b.start;
+        budgetSpent = b.spent || 0;
         if (budgetStart !== null) {
           document.getElementById('budget-input').value = budgetStart;
         }
@@ -383,8 +426,8 @@
   }
 
   function save() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(categories)); } catch {}
-    try { localStorage.setItem(BUDGET_KEY, JSON.stringify({ start: budgetStart, spent: budgetSpent })); } catch {}
+    dbSet(STORAGE_KEY, categories).catch(() => {});
+    dbSet(BUDGET_KEY, { start: budgetStart, spent: budgetSpent }).catch(() => {});
   }
 
   // Render
@@ -675,10 +718,10 @@
     }
   }
 
-  function unlockApp() {
+  async function unlockApp() {
     document.getElementById('pin-screen').classList.add('hidden');
     document.getElementById('main-app').style.display = 'block';
-    load(); render(); renderBudget();
+    await load(); render(); renderBudget();
   }
 
   // Check session on load
