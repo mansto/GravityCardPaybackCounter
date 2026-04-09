@@ -732,6 +732,19 @@
     });
   }
 
+  // Request persistent storage so Android Firefox doesn't evict localStorage
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist();
+  }
+
+  // Save when page is hidden (Android app switch / browser close)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' &&
+        document.getElementById('main-app').style.display !== 'none') {
+      save();
+    }
+  });
+
   // Init
   initAuth();
 </script>
