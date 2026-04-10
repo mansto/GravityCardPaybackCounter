@@ -366,12 +366,18 @@
   const DB_NAME = 'gravity-counter';
   const DB_STORE = 'data';
 
-  function openDB() {
+  function openDB(retries = 2) {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, 1);
       req.onupgradeneeded = e => e.target.result.createObjectStore(DB_STORE);
       req.onsuccess = e => resolve(e.target.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => {
+        if (retries > 0) {
+          setTimeout(() => openDB(retries - 1).then(resolve, reject), 300);
+        } else {
+          reject(req.error);
+        }
+      };
     });
   }
 
@@ -407,7 +413,10 @@
         { id: 1, name: 'Kaffee', color: '#c0703a', step: 1, count: 0, sum: 0 },
         { id: 2, name: 'Schritte', color: '#3a7bc0', step: 100, count: 0, sum: 0 },
       ];
-    } catch { categories = []; }
+    } catch { if (categories.length === 0) categories = [
+      { id: 1, name: 'Kaffee', color: '#c0703a', step: 1, count: 0, sum: 0 },
+      { id: 2, name: 'Schritte', color: '#3a7bc0', step: 100, count: 0, sum: 0 },
+    ]; }
     try {
       const lsBudget = localStorage.getItem(BUDGET_KEY);
       if (lsBudget) {
