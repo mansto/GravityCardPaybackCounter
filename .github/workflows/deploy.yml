@@ -25,7 +25,6 @@ jobs:
       - name: Build
         run: node build.js
         env:
-          API_TOKEN: ${{ secrets.API_TOKEN }}
           API_URL: ${{ secrets.API_URL }}
 
       - name: Deploy to GitHub Pages

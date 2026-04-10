@@ -3,20 +3,19 @@ const path = require('path');
 
 try { require('dotenv').config(); } catch {}
 
-const API_TOKEN = process.env.API_TOKEN;
-const API_URL   = process.env.API_URL;
+const API_URL = process.env.API_URL;
 
-if (!API_TOKEN || !API_URL) {
-  console.error('ERROR: API_TOKEN and API_URL must be set.');
-  console.error('Create a .env file based on .env.example or set them as environment variables.');
+if (!API_URL) {
+  console.error('ERROR: API_URL must be set.');
+  console.error('Create a .env file based on .env.example or set it as an environment variable.');
   process.exit(1);
 }
 
 fs.mkdirSync('dist', { recursive: true });
 
-// Inject token + URL into index.html
+// Inject API URL into index.html
 let html = fs.readFileSync('src/index.html', 'utf8');
-html = html.replace('__API_TOKEN__', API_TOKEN).replace('__API_URL__', API_URL);
+html = html.replace('__API_URL__', API_URL);
 fs.writeFileSync('dist/index.html', html);
 
 // Copy remaining static assets
