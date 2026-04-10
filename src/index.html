@@ -424,7 +424,7 @@
   let budgetSpent = 0;      // total debited so far (sum of all + clicks * step, minus - clicks)
 
   // ── API Storage ───────────────────────────────────────────────────────────
-  const API_URL = '__API_URL__';
+  const API_URL = '__API_URL__'.replace(/\/$/, '');
 
   let saveTimeout = null;
 
