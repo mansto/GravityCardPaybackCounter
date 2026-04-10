@@ -2,7 +2,7 @@
 
 # 🃏 Gravity Card Payback Counter
 
-**A sleek PWA for tracking your Gravity Card purchases by category — with budget control and PIN protection.**
+**A sleek PWA for tracking your Gravity Card purchases by category — with budget control and user accounts.**
 
 ![PWA](https://img.shields.io/badge/PWA-ready-blueviolet?style=flat-square&logo=googlechrome)
 ![Vanilla JS](https://img.shields.io/badge/Vanilla-JS-f7df1e?style=flat-square&logo=javascript&logoColor=black)
@@ -19,7 +19,8 @@
 |---|---|
 | 🎿 **Ticket Counters** | Create custom ticket categories, each with its own color and price |
 | 💰 **Budget Tracking** | Set the Gravity Card price and watch your remaining balance update in real time |
-| 🔒 **PIN Protection** | 4-digit PIN screen with lockout after 5 failed attempts (5-minute cooldown) |
+| 🔐 **User Accounts** | Register with username and password — each user sees only their own data |
+| 🔑 **Password Reset** | Forgot your password? Generate a reset link directly in the browser |
 | 📱 **Installable PWA** | Add to home screen on iOS and Android for a native app experience |
 | ☁️ **Cloud Storage** | All data stored in Cloudflare KV — reliable across browser restarts and devices |
 
@@ -29,7 +30,7 @@
 
 ```
 ┌─────────────────────────────┐
-│   🔐 PIN Screen             │  4-digit entry · lockout after 5 wrong tries
+│   🔐 Login / Register       │  Username + password · password reset
 ├─────────────────────────────┤
 │   💳 Budget Panel           │  Set Gravity Card price · live remaining balance in €
 ├─────────────────────────────┤
@@ -45,10 +46,10 @@
 |---|---|
 | Language | Vanilla JavaScript (ES2020+) |
 | UI | HTML5 + CSS3, single-file SPA |
-| Storage | Cloudflare Workers + KV |
-| Auth | SHA-256 via `crypto.subtle` (PIN) + Bearer token (API) |
+| Storage | Cloudflare Workers + KV (per-user data isolation) |
+| Auth | PBKDF2-SHA-256 passwords · session tokens in KV (7-day TTL) |
 | PWA | Service Worker (cache-first) + Web App Manifest |
-| Build | Node.js build script — injects API credentials at build time |
+| Build | Node.js build script — injects `API_URL` at build time |
 | CI/CD | GitHub Actions → GitHub Pages |
 | Fonts | Google Fonts — Bebas Neue, IBM Plex Mono |
 
@@ -58,15 +59,15 @@
 
 ```
 ├── src/
-│   ├── index.html      # Application (HTML + CSS + JS), uses __API_URL__ / __API_TOKEN__ placeholders
+│   ├── index.html      # Application (HTML + CSS + JS), uses __API_URL__ placeholder
 │   ├── manifest.json   # PWA manifest
 │   ├── sw.js           # Service Worker
 │   ├── icon-192.jpg    # App icon
 │   └── icon-512.jpg    # App icon (large)
 ├── dist/               # Built output (gitignored) — deployed to GitHub Pages
-├── worker.js           # Cloudflare Worker (API + KV storage)
+├── worker.js           # Cloudflare Worker (auth endpoints + KV storage)
 ├── wrangler.toml       # Cloudflare Workers configuration
-├── build.js            # Build script: injects secrets + copies assets to dist/
+├── build.js            # Build script: injects API_URL + copies assets to dist/
 ├── package.json
 ├── .env.example        # Template for local development
 └── .github/
@@ -78,7 +79,7 @@
 
 ## ☁️ Cloudflare Workers Setup
 
-The app stores all data in a Cloudflare Worker backed by KV. This replaces local browser storage for reliable persistence across sessions and devices.
+The app backend runs as a Cloudflare Worker with KV storage. All user accounts and app data are stored there.
 
 ### First-time setup
 
@@ -103,25 +104,27 @@ id = "your-kv-id-here"
 ```bash
 wrangler deploy
 ```
-Note the Worker URL printed at the end (e.g. `https://gravity-counter-api.XYZ.workers.dev`).
+Note the Worker URL printed at the end — you'll need it as the `API_URL` secret.
 
-**4. Set the auth token**
+### Worker API
 
-Generate a strong random secret (e.g. a UUID) and register it as a Worker secret:
-```bash
-wrangler secret put AUTH_TOKEN
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `POST` | `/register` | — | Create a user account |
+| `POST` | `/login` | — | Authenticate, receive session token |
+| `POST` | `/logout` | session | Invalidate session |
+| `POST` | `/reset-request` | — | Generate a password reset token |
+| `POST` | `/reset-confirm` | — | Set a new password using a reset token |
+| `GET` | `/` | session | Load the authenticated user's data |
+| `PUT` | `/` | session | Save the authenticated user's data |
+
+### KV data structure
+
 ```
-
-### API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Load all app data |
-| `PUT` | `/` | Save all app data |
-
-All requests require the header:
-```
-Authorization: Bearer <AUTH_TOKEN>
+users:{username}       → account (passwordHash, userId, …)
+user-data:{userId}     → app data (categories, budget)
+sessions:{token}       → session record (7-day TTL)
+reset:{token}          → reset record (1-hour TTL)
 ```
 
 ---
@@ -130,13 +133,12 @@ Authorization: Bearer <AUTH_TOKEN>
 
 On every push to `main`, GitHub Actions builds the app and deploys it to the `gh-pages` branch.
 
-### Required GitHub Repository Secrets
+### Required GitHub Repository Secret
 
 Go to **Settings → Secrets and variables → Actions** and add:
 
 | Secret | Value |
 |--------|-------|
-| `API_TOKEN` | Same secret used in `wrangler secret put AUTH_TOKEN` |
 | `API_URL` | Worker URL from `wrangler deploy` |
 
 ### GitHub Pages configuration
@@ -150,7 +152,7 @@ After the first successful workflow run, go to **Settings → Pages** and set th
 **1. Copy and fill in `.env`**
 ```bash
 cp .env.example .env
-# edit .env with your API_TOKEN and API_URL
+# edit .env: set API_URL to your Worker URL
 ```
 
 **2. Build**
@@ -164,16 +166,15 @@ npm run build
 npx serve dist
 ```
 
-> **Default PIN:** `1357`
-
 ---
 
-## 🔒 PIN & Lockout
+## 🔐 User Accounts
 
-- Enter a 4-digit PIN to access the app
-- **5 wrong attempts** → locked for **5 minutes**
-- A live countdown is shown during lockout
-- Correct PIN resets the attempt counter
+- **Register** — choose a username (a–z, 0–9, `_`, `-`) and a password (min. 8 characters)
+- **Login** — session is stored in `localStorage` and lasts 7 days
+- **Logout** — button in the app header; invalidates the session on the server
+- **Password reset** — enter your username on the "Passwort vergessen" screen; a reset link is generated and the browser redirects automatically (link expires after 1 hour)
+- **Data isolation** — each user account has its own data; no cross-user access
 
 ---
 
