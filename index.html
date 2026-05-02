@@ -520,6 +520,7 @@
   const API_URL = 'https://gravity-counter-api.mstocker.workers.dev/'.replace(/\/$/, '');
 
   let saveTimeout = null;
+  let savePending = false;
   let syncInterval = null;
 
   async function load() {
@@ -567,13 +568,15 @@
 
   function flushSave() {
     clearTimeout(saveTimeout);
+    saveTimeout = null;
     syncToActiveSeason();
+    savePending = true;
     fetch(API_URL, {
       method: 'PUT',
       keepalive: true,
       headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ seasons, activeSeason })
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => { savePending = false; });
   }
 
   function save() {
@@ -584,7 +587,7 @@
   function startSync() {
     stopSync();
     syncInterval = setInterval(async () => {
-      if (saveTimeout !== null) return;
+      if (saveTimeout !== null || savePending) return;
       if (document.visibilityState === 'hidden') return;
       await load();
       render();
